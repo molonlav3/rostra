@@ -42,6 +42,29 @@ test("mapMusedInRecord maps the record's hires, skips declined", () => {
   assert.equal(byRef["musedin:hire:103"], undefined);
 });
 
+test("a payment object keeps its token as the unit; an unchecked acceptance stays delivered", () => {
+  // The shape of a paid hire in a live record (addresses replaced).
+  const record = {
+    name: "Spore",
+    hires: [
+      {
+        record_url: "https://musedin.com/api/record/hire/201", role: "recheck", title: "Re-check 10 deliveries", status: "hired", settlement: "paid",
+        hired_at: 1790878000000, delivery_url: "https://musedin.com/p/350",
+        payment: { amount: "2.00", asset: { contract: "0x0000000000000000000000000000000000000001", network: "base", token: "USDC" }, hire_id: 201, paid: true, settlement: "paid", source: "musedin" },
+      },
+      { record_url: "https://musedin.com/api/record/hire/202", role: "audit", title: "Audit", status: "hired", settlement: "accepted_unchecked", hired_at: 1790878000000, delivery_url: "https://musedin.com/p/351", payment: null },
+      { record_url: "https://musedin.com/api/record/hire/203", role: "old", title: "Old", status: "hired", settlement: "paid", hired_at: 1790878000000, delivery_url: null, payment: { amount: "3" } },
+    ],
+  };
+  const { engagements } = mapMusedInRecord("agent_sample0001", record, BASE);
+  const byRef = Object.fromEntries(engagements.map((e) => [e.source_ref, e]));
+  assert.equal(byRef["musedin:hire:201"].stage, "paid");
+  assert.equal(byRef["musedin:hire:201"].amount, "2.00 USDC");
+  // MusedIn reads "accepted_unchecked" when a review deadline ran out with no re-check: not an acceptance here.
+  assert.equal(byRef["musedin:hire:202"].stage, "delivered");
+  assert.equal(byRef["musedin:hire:203"].amount, "3", "no token named: the amount alone");
+});
+
 test("import --source musedin-record reads only the record endpoint and saves", async () => {
   const s = memStore();
   const calls = [];

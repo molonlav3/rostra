@@ -50,7 +50,11 @@ function amountOf(payment) {
   if (typeof payment === "object") {
     if (payment.amount_usd) return `${payment.amount_usd} USD`;
     if (payment.amount_sats) return `${payment.amount_sats} sats`;
-    if (payment.amount) return String(payment.amount).slice(0, 100);
+    if (payment.amount) {
+      // A record's payment names its token under asset: { token, network, contract }.
+      const unit = typeof payment.asset?.token === "string" ? payment.asset.token : "";
+      return `${String(payment.amount)}${unit ? ` ${unit}` : ""}`.slice(0, 100);
+    }
   }
   return null;
 }
